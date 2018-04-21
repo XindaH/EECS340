@@ -3,6 +3,7 @@ from socket import *
 #parse the input website and find host name, path and port
 def serverName(argv):
 	if "https://" in argv:
+		print " https Error"
 		exit(1)
 	if "http://" in argv:
 		argv=argv[7:]
@@ -29,9 +30,8 @@ def serverName(argv):
 def client(webaddr):
 
 	name,path,port=serverName(webaddr)
-	addr=(name,port)
-	hostname = gethostname()
-	clientmessage="GET "+path+" HTTP/1.0\r\nHost: "+hostname+"\r\n\r\n"
+	addr=(name,port)	
+	clientmessage="GET "+path+" HTTP/1.0\r\nHost: "+name+"\r\n\r\n"
 	clientSocket=socket(AF_INET, SOCK_STREAM)# handshaking
 	clientSocket.connect(addr)
 	clientSocket.send(clientmessage.encode())# send request
@@ -45,8 +45,6 @@ def client(webaddr):
 # parse response message
 def parse(message, clientSocket):
 	messages = message.split("\n")
-	for i in messages:
-		print i
 	msgs=messages[0]
 	htmlIndex=message.find("\r\n\r\n")
 	html=message[htmlIndex+4:]
@@ -58,12 +56,18 @@ def parse(message, clientSocket):
 		clientSocket.close()
 		exit(1)
 	elif code>=300:
-		position=messages[3].find(":")
-		webaddr=messages[3][position+2:-1]
+		for i in messages:
+			if "Location" in i:
+				position=i.find(":")
+				webaddr=i[position+2:-1]
+				if code == 301:
+					print "301 permanent redirect. Redirected to: "+webaddr
+				elif code == 302:
+					print "302 temporary redirect. Redirected to: "+webaddr
+				break
 		clientSocket.close()
-		print "Redirected to: "+webaddr
 		client(webaddr)
-	elif code==200:
+	elif code>=200:
 		printHTML(html, clientSocket)
 		clientSocket.close()
 		exit(0)	
